@@ -3,7 +3,9 @@ using System.Collections;
 
 public class Tile : MonoBehaviour
 {
-    private const int Speed = 8;
+    private const int MoveSpeed = 10;
+    private const int ShrinkSpeed = 5;
+    private const int RotationSpeed = 1;
     private const float ShrinkScale = 0.1f;
 
     public bool IsMoving { get; private set; }
@@ -15,12 +17,7 @@ public class Tile : MonoBehaviour
         StartCoroutine(MoveTo(destination));
     }
 
-    public void OnMouseDown()
-    {
-        Kill();
-    }
-
-    public void Kill()
+    public void Remove()
     {
         IsMoving = true;
         StartCoroutine(Shrink());
@@ -30,7 +27,7 @@ public class Tile : MonoBehaviour
     {
         while (transform.localScale.x > ShrinkScale)
         {
-            transform.localScale -= Vector3.one*Time.deltaTime;
+            transform.localScale -= Vector3.one*Time.deltaTime * ShrinkSpeed;
             yield return null;
         }
         Destroy(gameObject);
@@ -40,7 +37,7 @@ public class Tile : MonoBehaviour
     {
         while (destination != transform.position)
         {
-            transform.position = Vector3.MoveTowards(transform.position, destination, Speed * Time.deltaTime);
+            transform.position = Vector3.MoveTowards(transform.position, destination, MoveSpeed * Time.deltaTime);
             yield return null;
         }
         IsMoving = false;

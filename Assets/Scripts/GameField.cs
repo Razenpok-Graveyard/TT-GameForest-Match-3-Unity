@@ -1,8 +1,20 @@
-﻿using System.Xml.Linq;
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Remoting.Messaging;
+using System.Xml.Linq;
 using UnityEngine;
+
+public enum GameState
+{
+    None,
+    TileMoving,
+    TileSelected
+}
 
 public class GameField : MonoBehaviour
 {
+    private GameState gameState = GameState.None;
     private const int Width = 8;
     private const int Height = 8;
     private static float textureWidth;
@@ -62,10 +74,82 @@ public class GameField : MonoBehaviour
     // Update is called once per frame
     private void Update()
     {
-        if (!tiles[0, 0].IsMoving)
+        gameState = GetGameState();
+        switch (gameState)
         {
-            tiles[0,0].Kill();
+            case (GameState.TileMoving):
+                return;
+            case (GameState.None):
+            {
+                var matches = FindMatches();
+                foreach (var match in matches)
+                {
+                    match.Remove();
+                }
+                break;
+            }
         }
-        Debug.Log(tiles[0,0]);
+    }
+
+    private GameState GetGameState()
+    {
+        var allTiles = Enumerable.Range(0, Height)
+            .SelectMany(row => GetRow(row));
+        if (allTiles.Any(tile => tile.IsMoving))
+            return GameState.TileMoving;
+        return GameState.None;
+    }
+
+    private IEnumerable<Tile> GetColumnMatches(int columnIndex)
+    {
+        var column = GetColumn(columnIndex).ToList();
+        return GetLineMatches(column);
+    }
+
+    private IEnumerable<Tile> GetColumn(int columnIndex)
+    {
+        if (columnIndex < 0 || columnIndex > Width)
+            return null;
+        var column = Enumerable.Range(0, Height)
+            .Select(y => tiles[columnIndex, y]);
+        return column;
+    }
+
+    private IEnumerable<Tile> GetLineMatches(List<Tile> line)
+    {
+        var result = new List<Tile>();
+        for (var i = 1; i < line.Count - 2; i++)
+        {
+            var thisName = line[i].name;
+            var leftName = line[i - 1].gameObject.name;
+            var rightName = line[i + 1].gameObject.name;
+            if (thisName == leftName && thisName == rightName)
+                result.AddRange(line.GetRange(i-1, 3));
+        }
+        return result.Distinct();
+    }
+
+    private IEnumerable<Tile> GetRowMatches(int rowIndex)
+    {
+        var row = GetRow(rowIndex).ToList();
+        return GetLineMatches(row);
+    }
+
+    private IEnumerable<Tile> GetRow(int rowIndex)
+    {
+        if (rowIndex < 0 || rowIndex > Height)
+            return null;
+        var row = Enumerable.Range(0, Width)
+            .Select(x => tiles[x, rowIndex]);
+        return row;
+    }
+
+    private IEnumerable<Tile> FindMatches()
+    {
+        var columnMatches = Enumerable.Range(0, Width)
+            .SelectMany(column => GetColumnMatches(column));
+        var rowMatches = Enumerable.Range(0, Height)
+            .SelectMany(row => GetRowMatches(row));
+        return columnMatches.Concat(rowMatches).Distinct();
     }
 }
