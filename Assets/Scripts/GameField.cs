@@ -10,7 +10,8 @@ public enum GameState
     None,
     TileMoving,
     TileSelected,
-    HasEmptyTiles
+    HasEmptyTiles,
+    MovedTile
 }
 
 public class GameField : MonoBehaviour
@@ -24,10 +25,12 @@ public class GameField : MonoBehaviour
     public GameObject BackgroundPrefab;
     private TileArray tiles = new TileArray(Width, Height);
     public GameObject[] TilePrefabs;
-    private Tile selectedTile;
+    private Point selectedTile;
 
     public GameObject GameoverLabel;
     public GameObject GameoverButton;
+
+    private Point swappedTile;
 
     private void Start()
     {
@@ -100,6 +103,47 @@ public class GameField : MonoBehaviour
                 FillField();
                 break;
             }
+            case GameState.TileSelected:
+            {
+                if (!Input.GetMouseButtonDown(0)) return;
+                var hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
+                if (hit.collider != null)
+                {
+                    var position = GetPoint(hit.collider.transform);
+                    var neighbours = GetNeighbours(selectedTile);
+                    if (neighbours.Any(pos => pos.X == position.X && pos.Y == position.Y))
+                    {
+                        tiles[selectedTile].StopSpinning();
+                        swappedTile = position;
+                        SwapTiles(selectedTile, swappedTile);
+                    }
+                    else
+                    {
+                        tiles[selectedTile].StopSpinning();
+                        selectedTile = null;
+                    }
+                }
+                break;
+            }
+            case GameState.MovedTile:
+            {
+                var matches = tiles.FindMatches().ToList();
+                if (matches.Any())
+                {
+                    foreach (var tile in matches)
+                    {
+                        tile.Remove();
+                        ScoreManager.Add(1);
+                    }
+                }
+                else
+                {
+                    SwapTiles(selectedTile, swappedTile);
+                }
+                selectedTile = null;
+                swappedTile = null;
+                break;
+            }
             case (GameState.None):
             {
                 var matches = tiles.FindMatches().ToList();
@@ -114,20 +158,33 @@ public class GameField : MonoBehaviour
                 }
                 if (Input.GetMouseButtonDown(0)) 
                 {
-                    if (selectedTile != null)
-                        selectedTile.StopSpinning();
                     var hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
                     if (hit.collider != null)
                     {
                         var position = GetPoint(hit.collider.transform);
-                        selectedTile = tiles[position];
-                        selectedTile.StartSpinning();
-                        gameState = GameState.TileSelected;
+                        selectedTile = position;
+                        tiles[selectedTile].StartSpinning();
                     }
                 }
                 break;
             }
         }
+    }
+
+    private IEnumerable<Point> GetNeighbours(Point target)
+    {
+        var offsets = new []{-1, 1};
+        return offsets.SelectMany(offset => new[] {new Point(offset, 0), new Point(0, offset)})
+            .Select(point => point.Sum(target));
+    }
+
+    private void SwapTiles(Point first, Point second)
+    {
+        var firstTile = tiles[first];
+        firstTile.MoveToPoint(backgroundTiles[second.X, second.Y].position);
+        tiles[second].MoveToPoint(backgroundTiles[first.X, first.Y].position);
+        tiles[first] = tiles[second];
+        tiles[second] = firstTile;
     }
 
     private Point GetPoint(Transform position)
@@ -170,8 +227,10 @@ public class GameField : MonoBehaviour
             return GameState.TileMoving;
         if (allTiles.Any(tile => tile == null))
             return GameState.HasEmptyTiles;
+        if (swappedTile != null)
+            return GameState.MovedTile;
+        if (selectedTile != null)
+            return GameState.TileSelected;
         return GameState.None;
     }
-
-    
 }

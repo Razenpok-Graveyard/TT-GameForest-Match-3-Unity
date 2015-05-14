@@ -32,6 +32,8 @@ public class Tile : MonoBehaviour
 
     public void StopSpinning()
     {
+        StopAllCoroutines();
+        transform.rotation = new Quaternion();
         IsSpinning = false;
     }
 
@@ -62,6 +64,5 @@ public class Tile : MonoBehaviour
             transform.Rotate(Vector3.forward * Time.deltaTime * RotationSpeed);
             yield return null;
         }
-        transform.rotation = new Quaternion();
     }
 }

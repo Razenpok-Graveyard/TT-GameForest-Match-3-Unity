@@ -9,7 +9,7 @@ public class TimeManager : MonoBehaviour {
     private static Text textField;
 
     private static float startTime;
-    private const int TimeLimit = 5;
+    private const int TimeLimit = 60;
     public static Action OnTimeUp;
 
     void Start()
