@@ -1,18 +1,14 @@
 ﻿using UnityEngine;
-using System.Collections;
 using UnityEngine.UI;
 
 public class ScoreManager : MonoBehaviour
 {
     private static Text textField;
-
     private static int score;
+
     public static int Score
     {
-        get
-        {
-            return score;
-        }
+        get { return score; }
         private set
         {
             score = value;
@@ -30,11 +26,11 @@ public class ScoreManager : MonoBehaviour
         Score -= value;
     }
 
-	void Start ()
-	{
-	    textField = gameObject.GetComponent<Text>();
+    private void Start()
+    {
+        textField = gameObject.GetComponent<Text>();
         if (!textField)
             Destroy(this);
-	    Score = 0;
-	}
+        Score = 0;
+    }
 }

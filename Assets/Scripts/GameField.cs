@@ -1,8 +1,5 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Remoting.Messaging;
-using System.Xml.Linq;
 using UnityEngine;
 
 public enum GameState
@@ -16,21 +13,19 @@ public enum GameState
 
 public class GameField : MonoBehaviour
 {
-    private GameState gameState = GameState.None;
     private const int Width = 8;
     private const int Height = 8;
     private static float textureWidth;
     private static float textureHeight;
     private readonly Transform[,] backgroundTiles = new Transform[Width, Height];
+    private readonly TileArray tiles = new TileArray(Width, Height);
     public GameObject BackgroundPrefab;
-    private TileArray tiles = new TileArray(Width, Height);
-    public GameObject[] TilePrefabs;
-    private Point selectedTile;
-
-    public GameObject GameoverLabel;
     public GameObject GameoverButton;
-
+    public GameObject GameoverLabel;
+    private GameState gameState = GameState.None;
+    private Point selectedTile;
     private Point swappedTile;
+    public GameObject[] TilePrefabs;
 
     private void Start()
     {
@@ -156,7 +151,7 @@ public class GameField : MonoBehaviour
                     }
                     break;
                 }
-                if (Input.GetMouseButtonDown(0)) 
+                if (Input.GetMouseButtonDown(0))
                 {
                     var hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
                     if (hit.collider != null)
@@ -173,7 +168,7 @@ public class GameField : MonoBehaviour
 
     private IEnumerable<Point> GetNeighbours(Point target)
     {
-        var offsets = new []{-1, 1};
+        var offsets = new[] {-1, 1};
         return offsets.SelectMany(offset => new[] {new Point(offset, 0), new Point(0, offset)})
             .Select(point => point.Sum(target));
     }
@@ -191,7 +186,7 @@ public class GameField : MonoBehaviour
     {
         for (var x = 0; x < Width; x++)
             for (var y = 0; y < Height; y++)
-                if (backgroundTiles[x,y] == position)
+                if (backgroundTiles[x, y] == position)
                     return new Point(x, y);
         return new Point(-1, -1);
     }

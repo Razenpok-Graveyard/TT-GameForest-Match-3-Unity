@@ -1,15 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using UnityEngine;
 
 class TileArray
 {
-    private int height;
-    private int width;
-
-    private Tile[,] tiles;
+    private readonly int height;
+    private readonly Tile[,] tiles;
+    private readonly int width;
 
     public TileArray(int height, int width)
     {

@@ -1,5 +1,5 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿using System.Collections;
+using UnityEngine;
 
 public class Tile : MonoBehaviour
 {
@@ -7,7 +7,6 @@ public class Tile : MonoBehaviour
     private const int ShrinkSpeed = 5;
     private const int RotationSpeed = 100;
     private const float ShrinkScale = 0.1f;
-
     public bool IsMoving { get; private set; }
     public bool IsSpinning { get; private set; }
 
@@ -41,7 +40,7 @@ public class Tile : MonoBehaviour
     {
         while (transform.localScale.x > ShrinkScale)
         {
-            transform.localScale -= Vector3.one*Time.deltaTime * ShrinkSpeed;
+            transform.localScale -= Vector3.one*Time.deltaTime*ShrinkSpeed;
             yield return null;
         }
         Destroy(gameObject);
@@ -51,7 +50,7 @@ public class Tile : MonoBehaviour
     {
         while (destination != transform.position)
         {
-            transform.position = Vector3.MoveTowards(transform.position, destination, MoveSpeed * Time.deltaTime);
+            transform.position = Vector3.MoveTowards(transform.position, destination, MoveSpeed*Time.deltaTime);
             yield return null;
         }
         IsMoving = false;
@@ -61,7 +60,7 @@ public class Tile : MonoBehaviour
     {
         while (IsSpinning)
         {
-            transform.Rotate(Vector3.forward * Time.deltaTime * RotationSpeed);
+            transform.Rotate(Vector3.forward*Time.deltaTime*RotationSpeed);
             yield return null;
         }
     }
