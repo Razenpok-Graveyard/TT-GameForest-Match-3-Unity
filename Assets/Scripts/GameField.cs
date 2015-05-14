@@ -9,7 +9,8 @@ public enum GameState
 {
     None,
     TileMoving,
-    TileSelected
+    TileSelected,
+    HasEmptyTiles
 }
 
 public class GameField : MonoBehaviour
@@ -52,14 +53,15 @@ public class GameField : MonoBehaviour
         for (var x = 0; x < Width; x++)
             for (var y = 0; y < Height; y++)
             {
-                SpawnTile(x);
+                if (tiles[x,y] == null)
+                    SpawnTile(x);
             }
     }
 
     private void SpawnTile(int column)
     {
         var position = new Vector3(column*textureWidth, Height*textureHeight);
-        var tilePrefab = TilePrefabs[Random.Range(0, TilePrefabs.Length - 1)];
+        var tilePrefab = TilePrefabs[Random.Range(0, TilePrefabs.Length)];
         var tile = (GameObject) Instantiate(tilePrefab, position, Quaternion.identity);
         for (var y = 0; y < Height; y++)
         {
@@ -79,24 +81,54 @@ public class GameField : MonoBehaviour
         {
             case (GameState.TileMoving):
                 return;
+            case GameState.HasEmptyTiles:
+            {
+                Collapse();
+                FillField();
+                break;
+            }
             case (GameState.None):
             {
-                var matches = FindMatches();
-                foreach (var match in matches)
+                var matches = FindMatches().ToList();
+                foreach (var tile in matches)
                 {
-                    match.Remove();
+                    tile.Remove();
+                    ScoreManager.Add(1);
                 }
                 break;
             }
         }
     }
 
+    private void Collapse()
+    {
+        for (var x = 0; x < Width; x++)
+            for (var y = 0; y < Height; y++)
+            {
+                if (tiles[x,y] != null) continue;
+                var onlyEmptyLeft = true;
+                for (var i = y + 1; i < Height; i++)
+                {
+                    if (tiles[x, i] == null) continue;
+                    tiles[x, y] = tiles[x, i];
+                    tiles[x, i].MoveToPoint(backgroundTiles[x,y].position);
+                    tiles[x, i] = null;
+                    onlyEmptyLeft = false;
+                    break;
+                }
+                if (onlyEmptyLeft)
+                    break;
+            }
+    }
+
     private GameState GetGameState()
     {
         var allTiles = Enumerable.Range(0, Height)
-            .SelectMany(row => GetRow(row));
-        if (allTiles.Any(tile => tile.IsMoving))
+            .SelectMany(row => GetRow(row)).ToList();
+        if (allTiles.Where(tile => tile != null).Any(tile => tile.IsMoving))
             return GameState.TileMoving;
+        if (allTiles.Any(tile => tile == null))
+            return GameState.HasEmptyTiles;
         return GameState.None;
     }
 
@@ -108,7 +140,7 @@ public class GameField : MonoBehaviour
 
     private IEnumerable<Tile> GetColumn(int columnIndex)
     {
-        if (columnIndex < 0 || columnIndex > Width)
+        if (columnIndex < 0 || columnIndex >= Width)
             return null;
         var column = Enumerable.Range(0, Height)
             .Select(y => tiles[columnIndex, y]);
@@ -118,7 +150,7 @@ public class GameField : MonoBehaviour
     private IEnumerable<Tile> GetLineMatches(List<Tile> line)
     {
         var result = new List<Tile>();
-        for (var i = 1; i < line.Count - 2; i++)
+        for (var i = 1; i < line.Count - 1; i++)
         {
             var thisName = line[i].name;
             var leftName = line[i - 1].gameObject.name;
@@ -137,7 +169,7 @@ public class GameField : MonoBehaviour
 
     private IEnumerable<Tile> GetRow(int rowIndex)
     {
-        if (rowIndex < 0 || rowIndex > Height)
+        if (rowIndex < 0 || rowIndex >= Height)
             return null;
         var row = Enumerable.Range(0, Width)
             .Select(x => tiles[x, rowIndex]);
