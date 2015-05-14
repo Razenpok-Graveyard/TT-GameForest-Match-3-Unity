@@ -22,11 +22,16 @@ public class GameField : MonoBehaviour
     private static float textureHeight;
     private readonly Transform[,] backgroundTiles = new Transform[Width, Height];
     public GameObject BackgroundPrefab;
-    private Tile[,] tiles = new Tile[Width, Height];
+    private TileArray tiles = new TileArray(Width, Height);
     public GameObject[] TilePrefabs;
+    private Tile selectedTile;
+
+    public GameObject GameoverLabel;
+    public GameObject GameoverButton;
 
     private void Start()
     {
+        TimeManager.OnTimeUp = OnTimeUp;
         var spriteRenderer = BackgroundPrefab.GetComponent<SpriteRenderer>();
         var texture = spriteRenderer.sprite.texture;
         // Adjust to Unity units
@@ -53,7 +58,7 @@ public class GameField : MonoBehaviour
         for (var x = 0; x < Width; x++)
             for (var y = 0; y < Height; y++)
             {
-                if (tiles[x,y] == null)
+                if (tiles[new Point(x, y)] == null)
                     SpawnTile(x);
             }
     }
@@ -65,12 +70,20 @@ public class GameField : MonoBehaviour
         var tile = (GameObject) Instantiate(tilePrefab, position, Quaternion.identity);
         for (var y = 0; y < Height; y++)
         {
-            if (tiles[column, y] != null) continue;
+            var currentTile = new Point(column, y);
+            if (tiles[currentTile] != null) continue;
             var tileComponent = tile.GetComponent<Tile>();
-            tiles[column, y] = tileComponent;
+            tiles[currentTile] = tileComponent;
             tileComponent.MoveToPoint(backgroundTiles[column, y].position);
             break;
         }
+    }
+
+    private void OnTimeUp()
+    {
+        Time.timeScale = 0f;
+        GameoverLabel.SetActive(true);
+        GameoverButton.SetActive(true);
     }
 
     // Update is called once per frame
@@ -89,15 +102,41 @@ public class GameField : MonoBehaviour
             }
             case (GameState.None):
             {
-                var matches = FindMatches().ToList();
-                foreach (var tile in matches)
+                var matches = tiles.FindMatches().ToList();
+                if (matches.Any())
                 {
-                    tile.Remove();
-                    ScoreManager.Add(1);
+                    foreach (var tile in matches)
+                    {
+                        tile.Remove();
+                        ScoreManager.Add(1);
+                    }
+                    break;
+                }
+                if (Input.GetMouseButtonDown(0)) 
+                {
+                    if (selectedTile != null)
+                        selectedTile.StopSpinning();
+                    var hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
+                    if (hit.collider != null)
+                    {
+                        var position = GetPoint(hit.collider.transform);
+                        selectedTile = tiles[position];
+                        selectedTile.StartSpinning();
+                        gameState = GameState.TileSelected;
+                    }
                 }
                 break;
             }
         }
+    }
+
+    private Point GetPoint(Transform position)
+    {
+        for (var x = 0; x < Width; x++)
+            for (var y = 0; y < Height; y++)
+                if (backgroundTiles[x,y] == position)
+                    return new Point(x, y);
+        return new Point(-1, -1);
     }
 
     private void Collapse()
@@ -105,14 +144,16 @@ public class GameField : MonoBehaviour
         for (var x = 0; x < Width; x++)
             for (var y = 0; y < Height; y++)
             {
-                if (tiles[x,y] != null) continue;
+                var currentTile = new Point(x, y);
+                if (tiles[currentTile] != null) continue;
                 var onlyEmptyLeft = true;
                 for (var i = y + 1; i < Height; i++)
                 {
-                    if (tiles[x, i] == null) continue;
-                    tiles[x, y] = tiles[x, i];
-                    tiles[x, i].MoveToPoint(backgroundTiles[x,y].position);
-                    tiles[x, i] = null;
+                    var nextTile = new Point(x, i);
+                    if (tiles[nextTile] == null) continue;
+                    tiles[currentTile] = tiles[nextTile];
+                    tiles[nextTile].MoveToPoint(backgroundTiles[x, y].position);
+                    tiles[nextTile] = null;
                     onlyEmptyLeft = false;
                     break;
                 }
@@ -124,7 +165,7 @@ public class GameField : MonoBehaviour
     private GameState GetGameState()
     {
         var allTiles = Enumerable.Range(0, Height)
-            .SelectMany(row => GetRow(row)).ToList();
+            .SelectMany(row => tiles.GetRow(row)).ToList();
         if (allTiles.Where(tile => tile != null).Any(tile => tile.IsMoving))
             return GameState.TileMoving;
         if (allTiles.Any(tile => tile == null))
@@ -132,56 +173,5 @@ public class GameField : MonoBehaviour
         return GameState.None;
     }
 
-    private IEnumerable<Tile> GetColumnMatches(int columnIndex)
-    {
-        var column = GetColumn(columnIndex).ToList();
-        return GetLineMatches(column);
-    }
-
-    private IEnumerable<Tile> GetColumn(int columnIndex)
-    {
-        if (columnIndex < 0 || columnIndex >= Width)
-            return null;
-        var column = Enumerable.Range(0, Height)
-            .Select(y => tiles[columnIndex, y]);
-        return column;
-    }
-
-    private IEnumerable<Tile> GetLineMatches(List<Tile> line)
-    {
-        var result = new List<Tile>();
-        for (var i = 1; i < line.Count - 1; i++)
-        {
-            var thisName = line[i].name;
-            var leftName = line[i - 1].gameObject.name;
-            var rightName = line[i + 1].gameObject.name;
-            if (thisName == leftName && thisName == rightName)
-                result.AddRange(line.GetRange(i-1, 3));
-        }
-        return result.Distinct();
-    }
-
-    private IEnumerable<Tile> GetRowMatches(int rowIndex)
-    {
-        var row = GetRow(rowIndex).ToList();
-        return GetLineMatches(row);
-    }
-
-    private IEnumerable<Tile> GetRow(int rowIndex)
-    {
-        if (rowIndex < 0 || rowIndex >= Height)
-            return null;
-        var row = Enumerable.Range(0, Width)
-            .Select(x => tiles[x, rowIndex]);
-        return row;
-    }
-
-    private IEnumerable<Tile> FindMatches()
-    {
-        var columnMatches = Enumerable.Range(0, Width)
-            .SelectMany(column => GetColumnMatches(column));
-        var rowMatches = Enumerable.Range(0, Height)
-            .SelectMany(row => GetRowMatches(row));
-        return columnMatches.Concat(rowMatches).Distinct();
-    }
+    
 }

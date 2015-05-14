@@ -5,10 +5,11 @@ public class Tile : MonoBehaviour
 {
     private const int MoveSpeed = 10;
     private const int ShrinkSpeed = 5;
-    private const int RotationSpeed = 1;
+    private const int RotationSpeed = 100;
     private const float ShrinkScale = 0.1f;
 
     public bool IsMoving { get; private set; }
+    public bool IsSpinning { get; private set; }
 
     public void MoveToPoint(Vector3 destination)
     {
@@ -21,6 +22,17 @@ public class Tile : MonoBehaviour
     {
         IsMoving = true;
         StartCoroutine(Shrink());
+    }
+
+    public void StartSpinning()
+    {
+        IsSpinning = true;
+        StartCoroutine(Spin());
+    }
+
+    public void StopSpinning()
+    {
+        IsSpinning = false;
     }
 
     private IEnumerator Shrink()
@@ -41,5 +53,15 @@ public class Tile : MonoBehaviour
             yield return null;
         }
         IsMoving = false;
+    }
+
+    private IEnumerator Spin()
+    {
+        while (IsSpinning)
+        {
+            transform.Rotate(Vector3.forward * Time.deltaTime * RotationSpeed);
+            yield return null;
+        }
+        transform.rotation = new Quaternion();
     }
 }

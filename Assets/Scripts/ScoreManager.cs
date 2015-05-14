@@ -35,5 +35,6 @@ public class ScoreManager : MonoBehaviour
 	    textField = gameObject.GetComponent<Text>();
         if (!textField)
             Destroy(this);
+	    Score = 0;
 	}
 }
